@@ -2,13 +2,21 @@
  * Normlize text
  * @param text
  */
-function normalizeText(text: string, toLowerCase: boolean = true) {
+function normalizeText(
+  text: string,
+  toLowerCase = false,
+  replaceSingleLine = false,
+) {
   let normalizedText = text
     .replace(/\n+/gi, "\n") //remove duplicate new lines
     .replace(/(\n\s*\n)+/g, "\n") //remove useless white sapce from textcontent
     .replace(/[ \t]+/gi, " "); //replace multiples space or tabs by a space
 
   if (toLowerCase) normalizedText = normalizedText.toLowerCase();
+
+  if (replaceSingleLine) {
+    normalizedText = normalizedText.replace(/\n/gi, "");
+  }
 
   return (
     normalizedText

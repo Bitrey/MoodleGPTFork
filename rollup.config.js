@@ -12,5 +12,8 @@ module.exports = {
       sourcemap: true,
     },
   ],
-  plugins: [ts(config), terser()],
+  plugins: [
+    ts(config),
+    // terser() // DEBUG: uncomment this to minify the output
+  ],
 };

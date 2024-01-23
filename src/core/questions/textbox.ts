@@ -4,14 +4,16 @@ import GPTAnswer from "../../types/gptAnswer";
 /**
  * Handle textbox
  * @param config
+ * @param answersElem
  * @param inputList
  * @param gptAnswer
  * @returns
  */
 function handleTextbox(
   config: Config,
+  answersElem: HTMLElement,
   inputList: NodeListOf<HTMLElement>,
-  gptAnswer: GPTAnswer
+  gptAnswer: GPTAnswer,
 ): boolean {
   const input = inputList[0] as HTMLInputElement | HTMLTextAreaElement;
 

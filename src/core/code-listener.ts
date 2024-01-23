@@ -1,6 +1,7 @@
 import Config from "../types/config";
+import ReplyFn from "../types/replyFn";
+import Logs from "../utils/logs";
 import titleIndications from "../utils/title-indications";
-import reply from "./reply";
 
 const pressedKeys: string[] = [];
 const listeners: {
@@ -12,13 +13,17 @@ const listeners: {
  * Create a listener on the keyboard to inject the code
  * @param config
  */
-function codeListener(config: Config) {
+function codeListener(config: Config, replyFn: ReplyFn) {
   document.body.addEventListener("keydown", function (event) {
     pressedKeys.push(event.key);
     if (pressedKeys.length > config.code.length) pressedKeys.shift();
     if (pressedKeys.join("") === config.code) {
       pressedKeys.length = 0;
-      setUpMoodleGpt(config);
+      setUpMoodleGpt(config, replyFn);
+    }
+
+    if (config.logs) {
+      Logs.info("Pressed keys:", pressedKeys);
     }
   });
 }
@@ -28,7 +33,7 @@ function codeListener(config: Config) {
  * @param config
  * @returns
  */
-function setUpMoodleGpt(config: Config) {
+function setUpMoodleGpt(config: Config, replyFn: ReplyFn) {
   /* Removing events */
   if (listeners.length > 0) {
     for (const listener of listeners) {
@@ -47,23 +52,39 @@ function setUpMoodleGpt(config: Config) {
   const query = inputQuery + ", textarea, select, [contenteditable]";
   const forms = document.querySelectorAll(".formulation");
 
+  if (config.logs) {
+    Logs.info("MoodleGPT is running");
+    // Logs.info("Query:", query);
+    Logs.info("Forms:", forms);
+  }
+
   for (const form of forms) {
-    const hiddenButton: HTMLElement = form.querySelector(".qtext");
+    const questionElem: HTMLElement = form.querySelector(".qtext");
 
-    if (config.cursor) hiddenButton.style.cursor = "pointer";
+    if (config.cursor) questionElem.style.cursor = "pointer";
 
-    const injectionFunction = reply.bind(
+    const injectionFunction = replyFn.bind(
       null,
       config,
-      hiddenButton,
-      form,
-      query
+      questionElem,
+      form as HTMLElement,
+      query,
     );
-    listeners.push({ element: hiddenButton, fn: injectionFunction });
-    hiddenButton.addEventListener("click", injectionFunction);
+    Logs.info("Injection function:", injectionFunction);
+    listeners.push({ element: questionElem, fn: injectionFunction });
+    questionElem.addEventListener("click", injectionFunction);
+
+    if (config.logs) {
+      Logs.info("Listener added on:", questionElem);
+    }
   }
 
   if (config.title) titleIndications("Injected");
+
+  if (config.logs) {
+    Logs.info("Listeners:", listeners);
+    Logs.info("Pressed keys:", pressedKeys);
+  }
 }
 
 /**

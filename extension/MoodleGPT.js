@@ -1,2 +1,587 @@
-!function(e){"function"==typeof define&&define.amd?define(e):e()}((function(){"use strict";function e(e){const t=document.title;document.title=e,setTimeout((()=>document.title=t),3e3)}function t(e,t,n,o){return new(n||(n=Promise))((function(r,s){function i(e){try{c(o.next(e))}catch(e){s(e)}}function l(e){try{c(o.throw(e))}catch(e){s(e)}}function c(e){var t;e.done?r(e.value):(t=e.value,t instanceof n?t:new n((function(e){e(t)}))).then(i,l)}c((o=o.apply(e,t||[])).next())}))}class n{static question(e){console.log("%c[QUESTION]: %s","color: cyan",e)}static responseTry(e,t){const n="color: "+(t?"green":"red");console.log("%c[CHECKING]: %s",n,e)}static array(e){console.log("[CORRECTS] ",e)}static response(e){console.log("Original:\n"+e.response),console.log("Normalized:\n"+e.normalizedResponse)}}function o(e,t=!0){let n=e.replace(/\n+/gi,"\n").replace(/(\n\s*\n)+/g,"\n").replace(/[ \t]+/gi," ");return t&&(n=n.toLowerCase()),n.trim().replace(/^[a-z\d]\.\s/gi,"").replace(/\n[a-z\d]\.\s/gi,"\n")}function r(e){const t=[],n=Array.from(e.querySelectorAll("tr")),o=[];n.map((e=>{const n=Array.from(e.querySelectorAll("td, th")).map(((e,t)=>{var n;const r=null===(n=e.textContent)||void 0===n?void 0:n.trim();return o[t]=Math.max(o[t]||0,r.length||0),r}));t.push(n)}));const r=o.reduce(((e,t)=>e+t))+3*t[0].length+1,s="\n"+Array(r).fill("-").join("")+"\n",i=t.map((e=>"| "+e.map(((e,t)=>e.padEnd(o[t]," "))).join(" | ")+" |"));return i.shift()+s+i.join("\n")}function s(e,t,r){const s=null==t?void 0:t[0];if(!s||"checkbox"!==s.type&&"radio"!==s.type)return!1;for(const s of t){const t=o(s.parentNode.textContent),i=r.normalizedResponse.includes(t);e.logs&&n.responseTry(t,i),i&&(e.mouseover?s.addEventListener("mouseover",(()=>s.checked=!0),{once:!0}):s.checked=!0)}return!0}function i(e,t,r){if(0===t.length||"SELECT"!==t[0].tagName)return!1;let s=r.normalizedResponse.split("\n");e.logs&&n.array(s),s.length===2*t.length&&(s=s.filter(((e,t)=>t%2==1)));for(let r=0;r<t.length;++r){const i=t[r].querySelectorAll("option");for(const t of i){const l=o(t.textContent),c=s[r].includes(l);if(!/[^\d]+/gi.test(l)){const r=o(t.parentNode.closest("tr").querySelector(".text").textContent),l=s.findIndex((t=>{const o=t.includes(r);return e.logs&&n.responseTry(r,o),o}));if(-1!==l){e.mouseover?i[l+1].closest("select").addEventListener("click",(function(){i[l+1].selected="selected"}),{once:!0}):i[l+1].selected="selected";break}}if(e.logs&&n.responseTry(l,c),c){e.mouseover?t.closest("select").addEventListener("click",(()=>t.selected=!0),{once:!0}):t.selected=!0;break}}}return!0}function l(e,t,n){const o=t[0];if(1!==t.length||"TEXTAREA"!==o.tagName&&"text"!==o.type)return!1;if(e.typing){let e=0;o.addEventListener("keydown",(function(t){"Backspace"===t.key&&(e=n.response.length+1),e>n.response.length||(t.preventDefault(),o.value=n.response.slice(0,++e))}))}else o.value=n.response;return!0}function c(t,n){t.title&&e("Copied to clipboard"),navigator.clipboard.writeText(n.response)}function a(e,t,n){var o,r;const s=t[0];if(1!==t.length||"number"!==s.type)return!1;const i=null===(r=null===(o=n.normalizedResponse.match(/\d+([,\.]\d+)?/gi))||void 0===o?void 0:o[0])||void 0===r?void 0:r.replace(",",".");if(!i)return!1;if(e.typing){let e=0;s.addEventListener("keydown",(function(t){"Backspace"===t.key&&(e=i.length+1),e>i.length||(t.preventDefault(),"."===i.slice(e,e+1)&&++e,s.value=i.slice(0,++e))}))}else s.value=i;return!0}function u(e,t,n){const o=t[0];if(1!==t.length||"true"!==o.getAttribute("contenteditable"))return!1;if(e.typing){let e=0;o.addEventListener("keydown",(function(t){if("Backspace"===t.key&&(e=n.response.length+1),e>n.response.length)return;t.preventDefault(),o.textContent=n.response.slice(0,++e),o.focus();const r=document.createRange();r.selectNodeContents(o),r.collapse(!1);const s=window.getSelection();s.removeAllRanges(),s.addRange(r)}))}else o.textContent=n.response;return!0}function d(e,d,f,p){return t(this,void 0,void 0,(function*(){e.cursor&&(d.style.cursor="wait");const h=function(e,t){let n=t.innerText;const s=t.querySelectorAll(".accesshide");for(const e of s)n=n.replace(e.innerText,"");const i=t.querySelectorAll(".qtext table");for(const e of i)n=n.replace(e.innerText,"\n"+r(e)+"\n");return o(n,!1)}(0,f),g=f.querySelectorAll(p),y=yield function(e,n){return t(this,void 0,void 0,(function*(){const t=new AbortController,r=setTimeout((()=>t.abort()),15e3),s=yield fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${e.apiKey}`},signal:e.timeout?t.signal:null,body:JSON.stringify({model:e.model,messages:[{role:"system",content:"\nFollow those rules:\n- Sometimes there won't be a question, so just answer the statement as you normally would without following the other rules and give the most detailled and complete answer with explication.\n- For put in order question just give the good order separate by new line\n- Your goal is to understand the statement and to reply to each question by giving only the answer.\n- You will keep the same order for the answers like in the text. \n- You will separate all the answer with new lines and only show the correctes one.\n- You will only give the answers for each question and omit the questions, statement, title or other informations from the response.\n- You will only give answer with exactly the same text as the gived answers.\n- The question always have the good answer so you should always give an answer to the question.\n- You will always respond in the same langage as the user question."},{role:"user",content:n}],temperature:.8,top_p:1,presence_penalty:1,stop:null})});clearTimeout(r);const i=(yield s.json()).choices[0].message.content;return{response:i,normalizedResponse:o(i)}}))}(e,h).catch((e=>({error:e}))),v="object"==typeof y&&"error"in y;if(e.cursor&&(d.style.cursor=e.infinite||v?"pointer":"initial"),v)return void console.error(y.error);if(e.logs&&(n.question(h),n.response(y)),"clipboard"===e.mode)return e.infinite||m(d),c(e,y);if("question-to-answer"===e.mode){m(d);const e=f.querySelector(".qtext"),t=e.textContent;return e.textContent=y.response,e.style.whiteSpace="pre-wrap",void e.addEventListener("click",(function(){const n=e.textContent===t;e.style.whiteSpace=n?"pre-wrap":null,e.textContent=n?y.response:t}))}e.infinite||m(d);const w=[u,l,a,i,s];for(const t of w)if(t(e,g,y))return;c(e,y)}))}const f=[],p=[];function h(t){document.body.addEventListener("keydown",(function(n){f.push(n.key),f.length>t.code.length&&f.shift(),f.join("")===t.code&&(f.length=0,function(t){if(p.length>0){for(const e of p)t.cursor&&(e.element.style.cursor="initial"),e.element.removeEventListener("click",e.fn);return t.title&&e("Removed"),void(p.length=0)}const n=["checkbox","radio","text","number"].map((e=>`input[type="${e}"]`)).join(",")+", textarea, select, [contenteditable]",o=document.querySelectorAll(".formulation");for(const e of o){const o=e.querySelector(".qtext");t.cursor&&(o.style.cursor="pointer");const r=d.bind(null,t,o,e,n);p.push({element:o,fn:r}),o.addEventListener("click",r)}t.title&&e("Injected")}(t))}))}function m(e){const t=p.findIndex((t=>t.element===e));if(-1!==t){const e=p.splice(t,1)[0];e.element.removeEventListener("click",e.fn)}}chrome.storage.sync.get(["moodleGPT"]).then((function(e){const t=e.moodleGPT;if(!t)throw new Error("Please configure MoodleGPT into the extension");h(t)}))}));
+(function (factory) {
+  typeof define === 'function' && define.amd ? define(factory) :
+  factory();
+})((function () { 'use strict';
+
+  class Logs {
+      static question(question) {
+          const cssQ = "color: cyan";
+          const cssR = "color: blue";
+          console.log("%c[QUESTION]: %s\n%c[RESPONSES]: %s", cssQ, JSON.stringify(question.question), cssR, question.responses.map((r, i) => `${i}: ${JSON.stringify(r)}`).join("\n"));
+      }
+      static responseTry(text, valide) {
+          const css = "color: " + (valide ? "green" : "red");
+          console.log("%c[CHECKING]: %s", css, text);
+      }
+      static array(arr) {
+          console.log("[CORRECTS] ", arr);
+      }
+      static response(gptAnswer) {
+          if (gptAnswer.error) {
+              Logs.error(gptAnswer.error);
+              return;
+          }
+          console.log("Original:", gptAnswer.rawResponse);
+          console.log("Parsed:", gptAnswer.parsed);
+      }
+      static info(text, ...args) {
+          const css = "color: blue";
+          console.log("%c[INFO]: %s", css, text, ...args);
+      }
+      static warn(text, ...args) {
+          const css = "color: orange";
+          console.warn("%c[WARN]: %s", css, text, ...args);
+      }
+      static error(text, ...args) {
+          const css = "color: red";
+          console.error("%c[ERROR]: %s", css, text, ...args);
+      }
+  }
+
+  /**
+   * Show some informations into the document title and remove it after 3000ms
+   * @param text
+   */
+  function titleIndications(text) {
+      const backTitle = document.title;
+      document.title = text;
+      setTimeout(() => (document.title = backTitle), 3000);
+  }
+
+  const pressedKeys = [];
+  const listeners = [];
+  /**
+   * Create a listener on the keyboard to inject the code
+   * @param config
+   */
+  function codeListener(config, replyFn) {
+      document.body.addEventListener("keydown", function (event) {
+          pressedKeys.push(event.key);
+          if (pressedKeys.length > config.code.length)
+              pressedKeys.shift();
+          if (pressedKeys.join("") === config.code) {
+              pressedKeys.length = 0;
+              setUpMoodleGpt(config, replyFn);
+          }
+          if (config.logs) {
+              Logs.info("Pressed keys:", pressedKeys);
+          }
+      });
+  }
+  /**
+   * Setup moodleGPT into the page (remove/injection)
+   * @param config
+   * @returns
+   */
+  function setUpMoodleGpt(config, replyFn) {
+      /* Removing events */
+      if (listeners.length > 0) {
+          for (const listener of listeners) {
+              if (config.cursor)
+                  listener.element.style.cursor = "initial";
+              listener.element.removeEventListener("click", listener.fn);
+          }
+          if (config.title)
+              titleIndications("Removed");
+          listeners.length = 0;
+          return;
+      }
+      /* Code injection */
+      const inputQuery = ["checkbox", "radio", "text", "number"]
+          .map((e) => `input[type="${e}"]`)
+          .join(",");
+      const query = inputQuery + ", textarea, select, [contenteditable]";
+      const forms = document.querySelectorAll(".formulation");
+      if (config.logs) {
+          Logs.info("MoodleGPT is running");
+          // Logs.info("Query:", query);
+          Logs.info("Forms:", forms);
+      }
+      for (const form of forms) {
+          const questionElem = form.querySelector(".qtext");
+          if (config.cursor)
+              questionElem.style.cursor = "pointer";
+          const injectionFunction = replyFn.bind(null, config, questionElem, form, query);
+          Logs.info("Injection function:", injectionFunction);
+          listeners.push({ element: questionElem, fn: injectionFunction });
+          questionElem.addEventListener("click", injectionFunction);
+          if (config.logs) {
+              Logs.info("Listener added on:", questionElem);
+          }
+      }
+      if (config.title)
+          titleIndications("Injected");
+      if (config.logs) {
+          Logs.info("Listeners:", listeners);
+          Logs.info("Pressed keys:", pressedKeys);
+      }
+  }
+  /**
+   * Remove the event listener on a specific question
+   * @param element
+   */
+  function removeListener(element) {
+      const index = listeners.findIndex((listener) => listener.element === element);
+      if (index !== -1) {
+          const listener = listeners.splice(index, 1)[0];
+          listener.element.removeEventListener("click", listener.fn);
+      }
+  }
+
+  /******************************************************************************
+  Copyright (c) Microsoft Corporation.
+
+  Permission to use, copy, modify, and/or distribute this software for any
+  purpose with or without fee is hereby granted.
+
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+  REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+  INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+  LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+  OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+  PERFORMANCE OF THIS SOFTWARE.
+  ***************************************************************************** */
+  /* global Reflect, Promise, SuppressedError, Symbol */
+
+
+  function __awaiter(thisArg, _arguments, P, generator) {
+      function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+      return new (P || (P = Promise))(function (resolve, reject) {
+          function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+          function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+          function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+          step((generator = generator.apply(thisArg, _arguments || [])).next());
+      });
+  }
+
+  typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
+      var e = new Error(message);
+      return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
+  };
+
+  /**
+   * Parse ChatGPT raw response
+   * @param response - The raw response
+   * @returns The parsed response
+   */
+  function parseResponseJson(response) {
+      // first, try a normal JSON parse
+      let parsed = null;
+      response = response.trim();
+      try {
+          parsed = JSON.parse(response);
+          if (!Number.isInteger(parsed.guess)) {
+              throw new Error("Guess is not an integer");
+          }
+      }
+      catch (e) {
+          Logs.warn("Failed to parse JSON response:", e);
+      }
+      // if that fails, maybe it's <text>```json\n{...}```<text>
+      if (!parsed) {
+          const match = response.match(/```json\n(.*)```/s);
+          if (match) {
+              try {
+                  parsed = JSON.parse(match[1]);
+                  if (!Number.isInteger(parsed.guess)) {
+                      throw new Error("Guess is not an integer");
+                  }
+              }
+              catch (e) {
+                  Logs.warn("Failed to parse JSON response:", e);
+              }
+          }
+      }
+      // if that fails, maybe it's <text><pre>{...}</pre><text>
+      if (!parsed) {
+          const match = response.match(/<pre>(.*)<\/pre>/s);
+          if (match) {
+              try {
+                  parsed = JSON.parse(match[1]);
+                  if (!Number.isInteger(parsed.guess)) {
+                      throw new Error("Guess is not an integer");
+                  }
+              }
+              catch (e) {
+                  Logs.warn("Failed to parse JSON response:", e);
+              }
+          }
+      }
+      // if that fails, maybe it's <text>{...}</text>
+      if (!parsed) {
+          const match = response.match(/>(.*)</s);
+          if (match) {
+              try {
+                  parsed = JSON.parse(match[1]);
+                  if (!Number.isInteger(parsed.guess)) {
+                      throw new Error("Guess is not an integer");
+                  }
+              }
+              catch (e) {
+                  Logs.warn("Failed to parse JSON response:", e);
+              }
+          }
+      }
+      // if that fails, maybe it's <text>{...}</text>
+      if (!parsed) {
+          const match = response.match(/\{.*?\}/s);
+          if (match) {
+              try {
+                  parsed = JSON.parse(match[0]);
+                  if (!Number.isInteger(parsed.guess)) {
+                      throw new Error("Guess is not an integer");
+                  }
+              }
+              catch (e) {
+                  Logs.warn("Failed to parse JSON response:", e);
+              }
+          }
+      }
+      if (!parsed) {
+          Logs.error("Failed to parse JSON: " + response);
+      }
+      return {
+          rawResponse: response,
+          parsed,
+          error: parsed ? null : "Failed to parse JSON response",
+      };
+  }
+
+  /**
+   * Get system prompt
+   * @returns {string} The system prompt
+   */
+  /**
+   * Get safe system prompt
+   * @returns {string} The system prompt
+   */
+  function getSafeSystemPrompt(subject) {
+      return `
+  You are a teacher of ${subject}. You are preparing a multiple-choice test for your students,
+  and you are writing the questions and the answers in a Moodle quiz.
+  Your task is to write an explanation for each question, so that the students can understand why the correct answer is correct.
+  At the end of the explanation, you must write the correct answer, in JSON format as follows: { "guess": <number> }, with <number> index of the responses array.
+  The user will now input a question and numbered responses, formatted in JSON as {"question": "<string>", "responses": ["<string>", ...]}, with math formulas in MathJax format.
+      `.trim();
+  }
+  /**
+   * Get ChatGPT prompt
+   * @param question - The question
+   * @param responses - Array of responses
+   * @returns {string} The ChatGPT prompt
+   */
+  function getPrompt(gptQuestion) {
+      return JSON.stringify({
+          question: gptQuestion.question,
+          responses: gptQuestion.responses,
+      }, null, 4).replace(/\\\\/g, "\\");
+  }
+
+  /**
+   * Get the response from chatGPT api
+   * @param config
+   * @param question
+   * @returns
+   */
+  function getChatGPTResponse(config, userPrompt) {
+      return __awaiter(this, void 0, void 0, function* () {
+          const controller = new AbortController();
+          // DEBUG: timeout now at 150s
+          const timeoutControler = setTimeout(() => controller.abort(), 150000);
+          const req = yield fetch("https://api.openai.com/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${config.apiKey}`,
+              },
+              signal: config.timeout ? controller.signal : null,
+              body: JSON.stringify({
+                  model: config.model,
+                  messages: [
+                      {
+                          role: "system",
+                          // content: getSystemPrompt(),
+                          content: getSafeSystemPrompt("Numerical Analysis"),
+                      },
+                      { role: "user", content: userPrompt },
+                  ],
+                  temperature: 0.8,
+                  top_p: 1.0,
+                  presence_penalty: 1.0,
+                  stop: null,
+              }),
+          });
+          clearTimeout(timeoutControler);
+          const rep = yield req.json();
+          const response = rep.choices[0].message.content;
+          return parseResponseJson(response);
+      });
+  }
+
+  /**
+   * Normlize text
+   * @param text
+   */
+  function normalizeText(text, toLowerCase = false, replaceSingleLine = false) {
+      let normalizedText = text
+          .replace(/\n+/gi, "\n") //remove duplicate new lines
+          .replace(/(\n\s*\n)+/g, "\n") //remove useless white sapce from textcontent
+          .replace(/[ \t]+/gi, " "); //replace multiples space or tabs by a space
+      if (toLowerCase)
+          normalizedText = normalizedText.toLowerCase();
+      if (replaceSingleLine) {
+          normalizedText = normalizedText.replace(/\n/gi, "");
+      }
+      return (normalizedText
+          .trim()
+          /* We remove that because sometimes ChatGPT will reply: "answer d" */
+          .replace(/^[a-z\d]\.\s/gi, "") //a. text, b. text, c. text, 1. text, 2. text, 3.text
+          .replace(/\n[a-z\d]\.\s/gi, "\n") //same but with new line
+      );
+  }
+
+  /**
+   * Convert table to representating string table
+   * @param table
+   * @returns
+   */
+  function htmlTableToString(table) {
+      const tab = [];
+      const lines = Array.from(table.querySelectorAll("tr"));
+      const maxColumnsLength = [];
+      lines.map((line) => {
+          const cells = Array.from(line.querySelectorAll("td, th"));
+          const cellsContent = cells.map((cell, index) => {
+              var _a;
+              const content = (_a = cell.textContent) === null || _a === void 0 ? void 0 : _a.trim();
+              maxColumnsLength[index] = Math.max(maxColumnsLength[index] || 0, content.length || 0);
+              return content;
+          });
+          tab.push(cellsContent);
+      });
+      const lineSeparationSize = maxColumnsLength.reduce((a, b) => a + b) + tab[0].length * 3 + 1;
+      const lineSeparation = "\n" + Array(lineSeparationSize).fill("-").join("") + "\n";
+      const mappedTab = tab.map((line) => {
+          const mappedLine = line.map((content, index) => content.padEnd(maxColumnsLength[index], "\u00A0" /* For no matching with \s */));
+          return "| " + mappedLine.join(" | ") + " |";
+      });
+      const head = mappedTab.shift();
+      return head + lineSeparation + mappedTab.join("\n");
+  }
+
+  /**
+   * Clear MathJax elements
+   * @param element - The element to clear
+   * @returns The cleared element
+   */
+  function clearMathJax(_element) {
+      var _a;
+      const element = _element.cloneNode(true);
+      const mathJaxElements = element.querySelectorAll(".MathJax");
+      for (const mathJaxElement of mathJaxElements) {
+          let scriptElement = mathJaxElement.nextElementSibling;
+          if (!scriptElement) {
+              // try next next sibling of parent
+              scriptElement = (_a = mathJaxElement.parentElement) === null || _a === void 0 ? void 0 : _a.nextElementSibling;
+          }
+          if (scriptElement) {
+              // DEBUG
+              Logs.info("MathJax script:", scriptElement);
+              mathJaxElement.textContent = scriptElement.textContent;
+              scriptElement.remove();
+          }
+          else {
+              Logs.error("MathJax script not found:", mathJaxElement);
+          }
+      }
+      return element;
+  }
+
+  /**
+   * Normalize the question and add sub informations
+   * @param langage
+   * @param question
+   * @param answers
+   * @returns
+   */
+  function createQuestion(config, _questionContainer, formContainer) {
+      if (config.logs) {
+          Logs.info("Question container:", _questionContainer);
+          Logs.info("Answers container:", formContainer);
+      }
+      const questionContainer = clearMathJax(_questionContainer);
+      // extract .answernumber <span>s, get div after
+      const _answerElements = formContainer.querySelectorAll(".answernumber + div");
+      const answerElements = [];
+      for (const answerElement of _answerElements) {
+          answerElements.push(clearMathJax(answerElement));
+      }
+      let question = questionContainer.innerText;
+      if (config.logs)
+          Logs.info("Question:", question);
+      /* We remove unnecessary information */
+      const accesshideElements = formContainer.querySelectorAll(".accesshide");
+      for (const useless of accesshideElements) {
+          question = question.replace(useless.innerText, "");
+      }
+      /* Make tables more readable for chat-gpt */
+      const tables = formContainer.querySelectorAll(".qtext table");
+      for (const table of tables) {
+          question = question.replace(table.innerText, "\n" + htmlTableToString(table) + "\n");
+      }
+      return {
+          question: normalizeText(question),
+          responses: Array.from(answerElements).map((e) => normalizeText(e.innerText)),
+      };
+  }
+
+  /**
+   * Handle checkbox and input elements
+   * @param config
+   * @param answersElem
+   * @param inputList
+   * @param gptAnswer
+   */
+  function handleRadioAndCheckbox(config, answersElem, inputList, gptAnswer) {
+      // const input: HTMLInputElement = inputList?.[0];
+      // if (!input || (input.type !== "checkbox" && input.type !== "radio"))
+      //   return false;
+      // for (const input of inputList as NodeListOf<HTMLInputElement>) {
+      //   if (config.logs) {
+      //     Logs.info(
+      //       `Trying to check input with value ${input.value} and name ${input.name}`,
+      //     );
+      //   }
+      //   const content = normalizeText(input.parentNode.textContent);
+      //   const valide = gptAnswer.normalizedResponse.includes(content);
+      //   if (config.logs) Logs.responseTry(content, valide);
+      //   if (valide) {
+      //     if (config.mouseover) {
+      //       input.addEventListener("mouseover", () => (input.checked = true), {
+      //         once: true,
+      //       });
+      //     } else {
+      //       input.checked = true;
+      //     }
+      //   }
+      // }
+      if (typeof gptAnswer.parsed.guess !== "number")
+          return false;
+      // select radio inputs, check if value === gptAnswer.guess
+      answersElem
+          .querySelectorAll("input[type=radio]")
+          .forEach((input) => {
+          if (input.value.toString() === gptAnswer.parsed.guess.toString()) {
+              input.checked = true;
+          }
+      });
+      return true;
+  }
+
+  /**
+   * Copy the response in the clipboard if we can automaticaly fill the question
+   * @param config
+   * @param gptAnswer
+   */
+  function handleClipboard(config, gptAnswer) {
+      if (config.title)
+          titleIndications("Copied to clipboard");
+      // TODO change to make it work with not-choose-one questions
+      navigator.clipboard.writeText(gptAnswer.parsed.guess.toString());
+  }
+
+  /**
+   * Reply to the question
+   * @param config
+   * @param questionElem
+   * @param form
+   * @param query
+   * @returns
+   */
+  const reply = function (config, questionElem, form, query) {
+      return __awaiter(this, void 0, void 0, function* () {
+          if (config.cursor)
+              questionElem.style.cursor = "wait";
+          const question = createQuestion(config, questionElem, form);
+          const inputList = form.querySelectorAll(query);
+          const answer = form.querySelector(".answer");
+          if (config.logs) {
+              Logs.question(question);
+          }
+          let gptAnswer;
+          try {
+              const prompt = getPrompt(question);
+              if (config.logs) {
+                  Logs.info("Prompt:", prompt);
+              }
+              gptAnswer = yield getChatGPTResponse(config, prompt);
+          }
+          catch (err) {
+              Logs.error("Error while getting response from ChatGPT API:", err);
+              return null;
+          }
+          const haveError = gptAnswer.parsed === undefined || gptAnswer.error !== null;
+          if (config.cursor)
+              questionElem.style.cursor =
+                  config.infinite || haveError ? "pointer" : "initial";
+          if (haveError) {
+              Logs.error("GPT answer error:", gptAnswer.error);
+              return null;
+          }
+          if (config.logs) {
+              Logs.response(gptAnswer);
+          }
+          /* Handle clipboard mode */
+          // if (config.mode === "clipboard") {
+          //   if (!config.infinite) removeListener(questionElem);
+          //   handleClipboard(config, gptAnswer);
+          //   return null;
+          // }
+          /* Handle question to answer mode */
+          // if (config.mode === "question-to-answer") {
+          //   removeListener(questionElem);
+          //   const questionContainer = form.querySelector<HTMLElement>(".qtext");
+          //   const questionBackup = questionContainer.textContent;
+          //   questionContainer.textContent = gptAnswer.response;
+          //   questionContainer.style.whiteSpace = "pre-wrap";
+          //   questionContainer.addEventListener("click", function () {
+          //     const isNotResponse = questionContainer.textContent === questionBackup;
+          //     questionContainer.style.whiteSpace = isNotResponse ? "pre-wrap" : null;
+          //     questionContainer.textContent = isNotResponse
+          //       ? gptAnswer.response
+          //       : questionBackup;
+          //   });
+          //   return null;
+          // }
+          /* Better then set once on the event because if there is an error the user can click an other time on the question */
+          if (!config.infinite)
+              removeListener(questionElem);
+          const handlers = [
+              // handleContentEditable,
+              // handleTextbox,
+              // handleNumber,
+              // handleSelect,
+              handleRadioAndCheckbox,
+          ];
+          for (const handler of handlers) {
+              if (handler(config, answer, inputList, gptAnswer))
+                  return null;
+          }
+          /* In the case we can't auto complete the question */
+          handleClipboard(config, gptAnswer);
+      });
+  };
+
+  chrome.storage.sync.get(["moodleGPT"]).then(function (storage) {
+      const config = storage.moodleGPT;
+      if (!config)
+          throw new Error("Please configure MoodleGPT into the extension");
+      if (config.logs) {
+          Logs.info(`Started MoodleGPT with model ${config.model} and code ${config.code}`);
+      }
+      codeListener(config, reply);
+  });
+
+}));
 //# sourceMappingURL=MoodleGPT.js.map

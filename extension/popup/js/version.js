@@ -1,4 +1,4 @@
-const currentVersion = "1.0.3";
+const currentVersion = "1.0.4";
 const versionDisplay = document.querySelector("#version");
 
 /**
@@ -38,7 +38,7 @@ function setVersion(version, isCurrent = true) {
  * Check the extension neeed an update or no
  */
 async function notifyUpdate() {
-  const lastVersion = await getLastVersion().catch((err) => {
+  const lastVersion = await getLastVersion().catch(err => {
     console.error(err);
     return currentVersion;
   });

@@ -4,14 +4,16 @@ import GPTAnswer from "../../types/gptAnswer";
 /**
  * Hanlde contenteditable elements
  * @param config
+ * @param answersElem
  * @param inputList
  * @param gptAnswer
  * @returns
  */
 function handleContentEditable(
   config: Config,
+  answersElem: HTMLElement,
   inputList: NodeListOf<HTMLElement>,
-  gptAnswer: GPTAnswer
+  gptAnswer: GPTAnswer,
 ): boolean {
   const input = inputList[0];
 

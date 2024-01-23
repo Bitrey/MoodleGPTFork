@@ -1,8 +1,16 @@
 import GPTAnswer from "../types/gptAnswer";
+import GPTQuestion from "../types/gptQuestion";
 class Logs {
-  static question(text: string) {
-    const css = "color: cyan";
-    console.log("%c[QUESTION]: %s", css, text);
+  static question(question: GPTQuestion) {
+    const cssQ = "color: cyan";
+    const cssR = "color: blue";
+    console.log(
+      "%c[QUESTION]: %s\n%c[RESPONSES]: %s",
+      cssQ,
+      JSON.stringify(question.question),
+      cssR,
+      question.responses.map((r, i) => `${i}: ${JSON.stringify(r)}`).join("\n"),
+    );
   }
 
   static responseTry(text: string, valide: boolean) {
@@ -15,8 +23,27 @@ class Logs {
   }
 
   static response(gptAnswer: GPTAnswer) {
-    console.log("Original:\n" + gptAnswer.response);
-    console.log("Normalized:\n" + gptAnswer.normalizedResponse);
+    if (gptAnswer.error) {
+      Logs.error(gptAnswer.error);
+      return;
+    }
+    console.log("Original:", gptAnswer.rawResponse);
+    console.log("Parsed:", gptAnswer.parsed);
+  }
+
+  static info(text: string, ...args: unknown[]) {
+    const css = "color: blue";
+    console.log("%c[INFO]: %s", css, text, ...args);
+  }
+
+  static warn(text: string, ...args: unknown[]) {
+    const css = "color: orange";
+    console.warn("%c[WARN]: %s", css, text, ...args);
+  }
+
+  static error(text: string, ...args: unknown[]) {
+    const css = "color: red";
+    console.error("%c[ERROR]: %s", css, text, ...args);
   }
 }
 

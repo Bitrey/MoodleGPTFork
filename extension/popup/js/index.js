@@ -41,7 +41,7 @@ function showMessage(messageTxt, valide) {
 function handleModeChange() {
   const needDisable = disabledForThisMode[actualMode];
   const dontNeedDisable = inputsCheckbox.filter(
-    (input) => !needDisable.includes(input)
+    (input) => !needDisable.includes(input),
   );
   for (const id of needDisable) {
     document.querySelector("#" + id).parentElement.style.display = "none";
@@ -70,7 +70,7 @@ modes.forEach((button) => {
 /* Save the configuration */
 saveBtn.addEventListener("click", function () {
   const [apiKey, code, model] = inputsText.map((selector) =>
-    document.querySelector("#" + selector).value.trim()
+    document.querySelector("#" + selector).value.trim(),
   );
   const [logs, title, cursor, typing, mouseover, infinite, timeout] =
     inputsCheckbox.map((selector) => {
@@ -124,7 +124,7 @@ function getLastChatGPTVersion() {
     }
 
     reloadModel.setAttribute("disabled", true);
-    reloadModel.setAttribute("title", "Provide an api key first");
+    reloadModel.setAttribute("title", "Provide an API key first");
   }
 
   checkFiledApiKey();
@@ -143,8 +143,32 @@ function getLastChatGPTVersion() {
         },
       });
       const rep = await req.json();
-      const model = rep.data.find((model) => model.id.includes("gpt"));
-      document.querySelector("#model").value = model.root;
+      if (rep.error) {
+        console.error(rep.error);
+        showMessage(rep.error.message);
+        return;
+      }
+
+      /** @type {string[]} */
+      const gptModels =
+        rep?.data?.filter((e) => e?.id?.includes("gpt"))?.map((e) => e?.id) ||
+        [];
+      gptModels;
+      const model =
+        gptModels.find((e) =>
+          e.toLowerCase().includes(document.querySelector("#model").value),
+        ) || gptModels[0];
+
+      if (!model) {
+        console.error('No model found with "gpt" in the id', model);
+        showMessage("Failed to fetch any ChatGPT model");
+        return;
+      }
+      showMessage(
+        "Set GPT model to " + model + ", please click on 'Save'",
+        true,
+      );
+      document.querySelector("#model").value = model;
     } catch (err) {
       console.error(err);
       showMessage("Failed to fetch last ChatGPT version");
@@ -171,10 +195,10 @@ chrome.storage.sync.get(["moodleGPT"]).then(function (storage) {
     inputsText.forEach((key) =>
       config[key]
         ? (document.querySelector("#" + key).value = config[key])
-        : null
+        : null,
     );
     inputsCheckbox.forEach(
-      (key) => (document.querySelector("#" + key).checked = config[key] || "")
+      (key) => (document.querySelector("#" + key).checked = config[key] || ""),
     );
   }
 

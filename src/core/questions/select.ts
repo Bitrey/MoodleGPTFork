@@ -6,14 +6,16 @@ import normalizeText from "../../utils/normalize-text";
 /**
  * Handle select elements (and put in order select)
  * @param config
+ * @param answersElem
  * @param inputList
  * @param gptAnswer
  * @returns
  */
 function handleSelect(
   config: Config,
+  answersElem: HTMLElement,
   inputList: NodeListOf<HTMLElement>,
-  gptAnswer: GPTAnswer
+  gptAnswer: GPTAnswer,
 ): boolean {
   if (inputList.length === 0 || inputList[0].tagName !== "SELECT") return false;
 
@@ -68,7 +70,7 @@ function handleSelect(
               function () {
                 options[indexCorrectAnswer + 1].selected = "selected" as any;
               },
-              { once: true }
+              { once: true },
             );
           } else {
             options[indexCorrectAnswer + 1].selected = "selected" as any;
@@ -77,7 +79,6 @@ function handleSelect(
         }
       }
       /* End */
-
       if (config.logs) Logs.responseTry(content, valide);
 
       if (valide) {

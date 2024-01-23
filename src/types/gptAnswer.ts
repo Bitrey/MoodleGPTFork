@@ -1,6 +1,11 @@
+export type ParsedGPTAnswer = {
+  guess: number;
+};
+
 type GPTAnswer = {
-  response: string;
-  normalizedResponse: string;
+  rawResponse: string;
+  parsed: ParsedGPTAnswer | null;
+  error: string | null;
 };
 
 export default GPTAnswer;
