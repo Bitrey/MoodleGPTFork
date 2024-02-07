@@ -282,7 +282,7 @@ chrome.storage.sync.get(["moodleGPT"]).then(function (storage) {
   });
 
   apiKeySelector.addEventListener("blur", function () {
-    if (!config.apiKey && apiKeySelector.value.trim()) {
+    if (!config?.apiKey && apiKeySelector.value.trim()) {
       // get last config
       chrome.storage.sync.get(["moodleGPT"]).then(function (storage) {
         // save the API key
