@@ -5,6 +5,7 @@ type ReplyFn = (
   questionElem: HTMLElement,
   form: HTMLElement,
   query: string,
+  smart: boolean,
 ) => Promise<string | null>;
 
 export default ReplyFn;

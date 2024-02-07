@@ -25,8 +25,9 @@
           rel="noopener noreferrer"
           href="https://www.flaticon.com/free-icons/mortarboard"
           title="Mortarboard icons created by itim2101 - Flaticon"
-          ><img src="../icon.png" alt="icon"
-        /></a>
+        >
+          <img src="../icon.png" alt="icon" />
+        </a>
         <div class="col center title">
           <h1>MoodleGPT</h1>
           <p id="version"></p>
@@ -37,17 +38,35 @@
         <input id="apiKey" type="text" />
       </div>
       <div class="line center">
-        <label for="code" class="textLabel">Code</label>
+        <label for="code" class="textLabel">Code (fast)</label>
         <input id="code" type="text" />
       </div>
       <div class="line center">
-        <label for="model" class="textLabel">GPT Model</label>
-        <input id="model" type="text" />
+        <label for="codeSmart" class="textLabel">Code (smart)</label>
+        <input id="codeSmart" type="text" />
+      </div>
+      <div class="line center">
+        <label for="model" class="textLabel">GPT Model (fast)</label>
+        <select id="model" disabled class="model-elem">
+          <option value="none" selected>-- no model loaded --</option>
+        </select>
         <i
           id="reloadModel"
           class="fa-solid fa-rotate-right"
           disabled
-          title="Provide an api key first"
+          title="Provide an API key first"
+        ></i>
+      </div>
+      <div class="line center">
+        <label for="modelSmart" class="textLabel">GPT Model (smart)</label>
+        <select id="modelSmart" disabled class="model-elem">
+          <option value="none" selected>-- no model loaded --</option>
+        </select>
+        <i
+          id="reloadModelSmart"
+          class="fa-solid fa-rotate-right"
+          disabled
+          title="Provide an API key first"
         ></i>
       </div>
       <div class="line mt">

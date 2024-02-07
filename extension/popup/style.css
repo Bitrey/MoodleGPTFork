@@ -71,6 +71,22 @@ a {
   background-color: transparent;
 }
 
+select {
+  flex: 1 1;
+  background-color: var(--bg-color);
+  color: var(--color);
+  padding: 0.3rem 0.5rem;
+  border: thin solid var(--color);
+  border-radius: 0.2rem;
+  outline-color: transparent;
+  background-color: transparent;
+}
+
+option {
+  background-color: var(--bg-color);
+  color: var(--color);
+}
+
 .line input[type="checkbox"] {
   accent-color: var(--btn-color);
 }
@@ -130,11 +146,11 @@ a {
   margin-bottom: -0.25rem;
 }
 
-#reloadModel {
+#reloadModel,#reloadModelSmart {
   cursor: pointer;
 }
 
-#reloadModel[disabled] {
+#reloadModel[disabled],#reloadModelSmart[disabled] {
   cursor: not-allowed;
   opacity: 0.75;
 }

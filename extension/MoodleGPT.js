@@ -59,21 +59,27 @@
           pressedKeys.push(event.key);
           if (pressedKeys.length > config.code.length)
               pressedKeys.shift();
-          if (pressedKeys.join("") === config.code) {
+          const fast = pressedKeys.join("") === config.code;
+          const smart = pressedKeys.join("") === config.codeSmart;
+          if (fast || smart) {
               pressedKeys.length = 0;
-              setUpMoodleGpt(config, replyFn);
+              setUpMoodleGpt(config, replyFn, smart);
           }
           if (config.logs) {
               Logs.info("Pressed keys:", pressedKeys);
+              Logs.info("Fast:", fast);
+              Logs.info("Smart:", smart);
           }
       });
   }
   /**
    * Setup moodleGPT into the page (remove/injection)
    * @param config
+   * @param replyFn
+   * @param smart
    * @returns
    */
-  function setUpMoodleGpt(config, replyFn) {
+  function setUpMoodleGpt(config, replyFn, smart) {
       /* Removing events */
       if (listeners.length > 0) {
           for (const listener of listeners) {
@@ -101,8 +107,9 @@
           const questionElem = form.querySelector(".qtext");
           if (config.cursor)
               questionElem.style.cursor = "pointer";
-          const injectionFunction = replyFn.bind(null, config, questionElem, form, query);
+          const injectionFunction = replyFn.bind(null, config, questionElem, form, query, smart);
           Logs.info("Injection function:", injectionFunction);
+          Logs.info("Smart:", smart);
           listeners.push({ element: questionElem, fn: injectionFunction });
           questionElem.addEventListener("click", injectionFunction);
           if (config.logs) {
@@ -159,6 +166,8 @@
       var e = new Error(message);
       return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
   };
+
+  const subject = "Numerical Analysis";
 
   /**
    * Parse ChatGPT raw response
@@ -225,12 +234,12 @@
       }
       // if that fails, maybe it's <text>{...}</text>
       if (!parsed) {
-          const match = response.match(/\{.*?\}/s);
-          if (match) {
+          const match = response.match(/{.*}/s);
+          for (const m of match) {
               try {
-                  parsed = JSON.parse(match[0]);
-                  if (!Number.isInteger(parsed.guess)) {
-                      throw new Error("Guess is not an integer");
+                  parsed = JSON.parse(m);
+                  if (Number.isInteger(parsed.guess)) {
+                      break;
                   }
               }
               catch (e) {
@@ -238,8 +247,20 @@
               }
           }
       }
+      // if that fails, find "guess" and parse from { to }
+      if (!parsed) {
+          const match = response.match(/"guess":\s*(\d+)/);
+          if (match) {
+              const num = match[0].split(":")[1].trim();
+              const guess = parseInt(num, 10);
+              parsed = { guess };
+          }
+      }
       if (!parsed) {
           Logs.error("Failed to parse JSON: " + response);
+      }
+      else {
+          Logs.info("Successfully parsed response:", response);
       }
       return {
           rawResponse: response,
@@ -252,6 +273,13 @@
    * Get system prompt
    * @returns {string} The system prompt
    */
+  function getSystemPrompt() {
+      return `
+  This is a prompt for an artificial intelligence that tries to guess the correct answer to a multiple-choice question, given as input by the user in JSON format.
+  Input: a question and numbered responses, formatted in JSON as {"question": "<string>", "responses": ["<string>", ...]}, with math formulas in MathJax format.
+  Output: the answer that the AI thinks is correct, in JSON format as follows: { "guess": <number> }, with <number> index of the responses array. The output must not contain any additional text.
+      `.trim();
+  }
   /**
    * Get safe system prompt
    * @returns {string} The system prompt
@@ -282,9 +310,10 @@
    * Get the response from chatGPT api
    * @param config
    * @param question
+   * @param smart
    * @returns
    */
-  function getChatGPTResponse(config, userPrompt) {
+  function getChatGPTResponse(config, userPrompt, smart) {
       return __awaiter(this, void 0, void 0, function* () {
           const controller = new AbortController();
           // DEBUG: timeout now at 150s
@@ -301,8 +330,7 @@
                   messages: [
                       {
                           role: "system",
-                          // content: getSystemPrompt(),
-                          content: getSafeSystemPrompt("Numerical Analysis"),
+                          content: smart ? getSafeSystemPrompt(subject) : getSystemPrompt(),
                       },
                       { role: "user", content: userPrompt },
                   ],
@@ -499,7 +527,7 @@
    * @param query
    * @returns
    */
-  const reply = function (config, questionElem, form, query) {
+  const reply = function (config, questionElem, form, query, smart) {
       return __awaiter(this, void 0, void 0, function* () {
           if (config.cursor)
               questionElem.style.cursor = "wait";
@@ -515,7 +543,7 @@
               if (config.logs) {
                   Logs.info("Prompt:", prompt);
               }
-              gptAnswer = yield getChatGPTResponse(config, prompt);
+              gptAnswer = yield getChatGPTResponse(config, prompt, smart);
           }
           catch (err) {
               Logs.error("Error while getting response from ChatGPT API:", err);

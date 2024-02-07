@@ -17,13 +17,19 @@ function codeListener(config: Config, replyFn: ReplyFn) {
   document.body.addEventListener("keydown", function (event) {
     pressedKeys.push(event.key);
     if (pressedKeys.length > config.code.length) pressedKeys.shift();
-    if (pressedKeys.join("") === config.code) {
+
+    const fast = pressedKeys.join("") === config.code;
+    const smart = pressedKeys.join("") === config.codeSmart;
+
+    if (fast || smart) {
       pressedKeys.length = 0;
-      setUpMoodleGpt(config, replyFn);
+      setUpMoodleGpt(config, replyFn, smart);
     }
 
     if (config.logs) {
       Logs.info("Pressed keys:", pressedKeys);
+      Logs.info("Fast:", fast);
+      Logs.info("Smart:", smart);
     }
   });
 }
@@ -31,9 +37,11 @@ function codeListener(config: Config, replyFn: ReplyFn) {
 /**
  * Setup moodleGPT into the page (remove/injection)
  * @param config
+ * @param replyFn
+ * @param smart
  * @returns
  */
-function setUpMoodleGpt(config: Config, replyFn: ReplyFn) {
+function setUpMoodleGpt(config: Config, replyFn: ReplyFn, smart: boolean) {
   /* Removing events */
   if (listeners.length > 0) {
     for (const listener of listeners) {
@@ -69,8 +77,10 @@ function setUpMoodleGpt(config: Config, replyFn: ReplyFn) {
       questionElem,
       form as HTMLElement,
       query,
+      smart,
     );
     Logs.info("Injection function:", injectionFunction);
+    Logs.info("Smart:", smart);
     listeners.push({ element: questionElem, fn: injectionFunction });
     questionElem.addEventListener("click", injectionFunction);
 

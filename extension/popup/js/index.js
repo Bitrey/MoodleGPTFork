@@ -1,8 +1,12 @@
 const saveBtn = document.querySelector(".save");
 const message = document.querySelector("#message");
 
+const fastModelPreference = "gpt-3.5-turbo";
+const smartModelPreference = "gpt-4-1106";
+
 /* inputs id */
-const inputsText = ["apiKey", "code", "model"];
+const inputsText = ["apiKey", "code", "codeSmart"];
+const inputsSelect = ["model", "modelSmart"];
 const inputsCheckbox = [
   "logs",
   "title",
@@ -23,16 +27,110 @@ const disabledForThisMode = {
   "question-to-answer": ["typing", "infinite", "mouseover"],
 };
 
+const apiKeySelector = document.querySelector("#apiKey");
+const reloadModel = document.querySelector("#reloadModel");
+const reloadModelSmart = document.querySelector("#reloadModelSmart");
+
 /**
  * Show message into the popup
- * @param {string} messageTxt
- * @param {boolean} valide
+ * @param {string} messageTxt - The message to show
+ * @param {boolean} valide - If the message is valid or not
  */
 function showMessage(messageTxt, valide) {
   message.style.color = valide ? "limegreen" : "red";
   message.textContent = messageTxt;
   message.style.display = "block";
   setTimeout(() => (message.style.display = "none"), 5000);
+}
+
+/**
+ * Fetch the models from OpenAI
+ * @param {string} apiKey - OpenAI API key
+ * @returns {Promise<string[]>} - The models
+ */
+async function fetchModels(apiKey) {
+  const req = await fetch("https://api.openai.com/v1/models", {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+  const rep = await req.json();
+  if (rep.error) {
+    throw new Error(rep.error.message);
+  }
+
+  const gptModelsAll = rep?.data?.filter((e) => e?.id?.includes("gpt")) || [];
+  /** @type {string[]} */
+  // sort by "created" date, which is a number
+  gptModelsAll.sort((a, b) => parseInt(b.created) - parseInt(a.created));
+  const gptModels = gptModelsAll.map((e) => e.id).filter((e) => e);
+
+  // set the message
+  showMessage(
+    "Fetched " +
+      gptModels.length +
+      " ChatGPT model" +
+      (gptModels.length > 1 ? "s" : ""),
+    true,
+  );
+
+  // save the models
+  const previousConfig = await chrome.storage.sync.get(["moodleGPT"]);
+  await chrome.storage.sync.set({
+    moodleGPT: {
+      ...previousConfig.moodleGPT,
+      models: gptModels,
+    },
+  });
+
+  addModels(gptModels);
+
+  return gptModels;
+}
+
+/**
+ * Add the models to the model selector
+ * @param {string[]} gptModels - The models
+ */
+function addModels(gptModels) {
+  for (const modelSelector of inputsSelect.map((e) =>
+    document.querySelector("#" + e),
+  )) {
+    const curSelected = modelSelector.value;
+    const isSmart = modelSelector.id.includes("Smart");
+
+    // remove the old models
+    for (const option of modelSelector.querySelectorAll("option")) {
+      option.remove();
+    }
+
+    // add the new models
+    for (const model of gptModels) {
+      const option = document.createElement("option");
+      option.value = model;
+      option.textContent = model;
+      modelSelector.appendChild(option);
+    }
+
+    // remove disabled
+    modelSelector.removeAttribute("disabled");
+
+    if (curSelected === "none" || !gptModels.includes(curSelected)) {
+      const firstPreference = isSmart
+        ? smartModelPreference
+        : fastModelPreference;
+
+      // this will select the first model if the user didn't select any
+      const index = Math.max(
+        gptModels.findIndex((e) => e.includes(firstPreference)),
+        0,
+      );
+
+      modelSelector.selectedIndex = index;
+    } else {
+      modelSelector.value = curSelected;
+    }
+  }
 }
 
 /**
@@ -68,9 +166,12 @@ modes.forEach((button) => {
 });
 
 /* Save the configuration */
-saveBtn.addEventListener("click", function () {
-  const [apiKey, code, model] = inputsText.map((selector) =>
+saveBtn.addEventListener("click", async function () {
+  const [apiKey, code, codeSmart] = inputsText.map((selector) =>
     document.querySelector("#" + selector).value.trim(),
+  );
+  const [model, modelSmart] = inputsSelect.map(
+    (selector) => document.querySelector("#" + selector).value,
   );
   const [logs, title, cursor, typing, mouseover, infinite, timeout] =
     inputsCheckbox.map((selector) => {
@@ -78,21 +179,33 @@ saveBtn.addEventListener("click", function () {
       return element.checked && element.parentElement.style.display !== "none";
     });
 
-  if (!apiKey || !code || !model) {
-    showMessage("Please complete all the form");
+  if (!apiKey || !code || !codeSmart || !model || !modelSmart) {
+    if (apiKey) {
+      showMessage("Please fill all the fields", false);
+    } else {
+      showMessage("Please provide an API key, then fill all the fields", false);
+    }
     return;
   }
 
-  if (code.length < 3) {
-    showMessage("The code should at least contain 3 characters");
+  if (code.length < 1) {
+    showMessage("The (fast) code should at least contain 1 character");
+    return;
+  } else if (codeSmart.length < 1) {
+    showMessage("The (smart) code should at least contain 1 character");
     return;
   }
+
+  const pastConfig = await chrome.storage.sync.get(["moodleGPT"]);
 
   chrome.storage.sync.set({
     moodleGPT: {
+      ...pastConfig.moodleGPT,
       apiKey,
       code,
+      codeSmart,
       model,
+      modelSmart,
       logs,
       title,
       cursor,
@@ -108,72 +221,25 @@ saveBtn.addEventListener("click", function () {
 });
 
 /**
- * Get the last ChatGPT version
+ * Check if the API key is provided
  */
-function getLastChatGPTVersion() {
-  const apiKeySelector = document.querySelector("#apiKey");
-  const reloadModel = document.querySelector("#reloadModel");
-
-  let apiKey = apiKeySelector.value;
-
-  function checkFiledApiKey() {
+function checkAndFillApiKey(apiKey) {
+  for (const model of [reloadModel, reloadModelSmart]) {
     if (apiKey) {
-      reloadModel.removeAttribute("disabled");
-      reloadModel.setAttribute("title", "Get last ChatGPT version");
-      return;
+      model.removeAttribute("disabled");
+      model.setAttribute("title", "Get last ChatGPT version");
+    } else {
+      model.setAttribute("disabled", true);
+      model.setAttribute("title", "Provide an API key first");
     }
-
-    reloadModel.setAttribute("disabled", true);
-    reloadModel.setAttribute("title", "Provide an API key first");
   }
+  return !!apiKey;
+}
 
-  checkFiledApiKey();
-
-  apiKeySelector.addEventListener("input", function () {
-    apiKey = apiKeySelector.value.trim();
-    checkFiledApiKey();
-  });
-
-  reloadModel.addEventListener("click", async function () {
-    if (!apiKey) return;
-    try {
-      const req = await fetch("https://api.openai.com/v1/models", {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      });
-      const rep = await req.json();
-      if (rep.error) {
-        console.error(rep.error);
-        showMessage(rep.error.message);
-        return;
-      }
-
-      /** @type {string[]} */
-      const gptModels =
-        rep?.data?.filter((e) => e?.id?.includes("gpt"))?.map((e) => e?.id) ||
-        [];
-      gptModels;
-      const model =
-        gptModels.find((e) =>
-          e.toLowerCase().includes(document.querySelector("#model").value),
-        ) || gptModels[0];
-
-      if (!model) {
-        console.error('No model found with "gpt" in the id', model);
-        showMessage("Failed to fetch any ChatGPT model");
-        return;
-      }
-      showMessage(
-        "Set GPT model to " + model + ", please click on 'Save'",
-        true,
-      );
-      document.querySelector("#model").value = model;
-    } catch (err) {
-      console.error(err);
-      showMessage("Failed to fetch last ChatGPT version");
-    }
-  });
+function modelsAreLoaded(selector) {
+  return (
+    selector.querySelectorAll("option").length > 0 && selector.value !== "none"
+  );
 }
 
 /* we load back the configuration */
@@ -192,9 +258,17 @@ chrome.storage.sync.get(["moodleGPT"]).then(function (storage) {
       }
     }
 
-    inputsText.forEach((key) =>
+    if (config.models) {
+      addModels(config.models);
+    } else if (config.apiKey) {
+      fetchModels(config.apiKey).catch((err) => {
+        showMessage(err, false);
+      });
+    }
+
+    [...inputsText, ...inputsSelect].forEach((key) =>
       config[key]
-        ? (document.querySelector("#" + key).value = config[key])
+        ? (document.querySelector("#" + key).value = config[key] || "")
         : null,
     );
     inputsCheckbox.forEach(
@@ -202,6 +276,48 @@ chrome.storage.sync.get(["moodleGPT"]).then(function (storage) {
     );
   }
 
+  apiKeySelector.addEventListener("input", function () {
+    apiKey = apiKeySelector.value.trim();
+    checkAndFillApiKey(apiKey);
+  });
+
+  apiKeySelector.addEventListener("blur", function () {
+    if (!config.apiKey && apiKeySelector.value.trim()) {
+      // get last config
+      chrome.storage.sync.get(["moodleGPT"]).then(function (storage) {
+        // save the API key
+        chrome.storage.sync.set({
+          moodleGPT: {
+            ...storage.moodleGPT,
+            apiKey: apiKeySelector.value.trim(),
+          },
+        });
+      });
+    }
+  });
+
+  for (const model of [reloadModel, reloadModelSmart]) {
+    model.addEventListener("click", async function () {
+      const apiKey = apiKeySelector.value.trim();
+      if (!checkAndFillApiKey(apiKey)) {
+        return;
+      }
+
+      for (const selector of inputsSelect) {
+        const modelSelector = document.querySelector("#" + selector);
+        if (modelsAreLoaded(modelSelector)) {
+          modelSelector.setAttribute("disabled", true);
+          modelSelector.setAttribute("title", "Loading models...");
+        }
+      }
+      try {
+        await fetchModels(apiKey);
+      } catch (err) {
+        showMessage(err, false);
+      }
+    });
+  }
+
   handleModeChange();
-  getLastChatGPTVersion();
+  checkAndFillApiKey(config.apiKey);
 });

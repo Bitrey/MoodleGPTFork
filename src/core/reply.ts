@@ -26,6 +26,7 @@ const reply: ReplyFn = async function (
   questionElem: HTMLElement,
   form: HTMLElement,
   query: string,
+  smart: boolean,
 ) {
   if (config.cursor) questionElem.style.cursor = "wait";
 
@@ -43,7 +44,7 @@ const reply: ReplyFn = async function (
     if (config.logs) {
       Logs.info("Prompt:", prompt);
     }
-    gptAnswer = await getChatGPTResponse(config, prompt);
+    gptAnswer = await getChatGPTResponse(config, prompt, smart);
   } catch (err) {
     Logs.error("Error while getting response from ChatGPT API:", err);
     return null;

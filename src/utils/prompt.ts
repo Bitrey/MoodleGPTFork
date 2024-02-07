@@ -1,5 +1,4 @@
 import GPTQuestion from "../types/gptQuestion";
-import Logs from "./logs";
 
 /**
  * Get system prompt

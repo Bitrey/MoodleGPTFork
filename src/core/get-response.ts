@@ -1,4 +1,4 @@
-import Config from "../types/config";
+import Config, { subject } from "../types/config";
 import GPTAnswer from "../types/gptAnswer";
 import parseResponseJson from "../utils/parseResponseJson";
 import { getSafeSystemPrompt, getSystemPrompt } from "../utils/prompt";
@@ -7,11 +7,13 @@ import { getSafeSystemPrompt, getSystemPrompt } from "../utils/prompt";
  * Get the response from chatGPT api
  * @param config
  * @param question
+ * @param smart
  * @returns
  */
 async function getChatGPTResponse(
   config: Config,
   userPrompt: string,
+  smart: boolean,
 ): Promise<GPTAnswer> {
   const controller = new AbortController();
   // DEBUG: timeout now at 150s
@@ -28,8 +30,7 @@ async function getChatGPTResponse(
       messages: [
         {
           role: "system",
-          // content: getSystemPrompt(),
-          content: getSafeSystemPrompt("Numerical Analysis"),
+          content: smart ? getSafeSystemPrompt(subject) : getSystemPrompt(),
         },
         { role: "user", content: userPrompt },
       ],
