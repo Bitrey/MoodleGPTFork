@@ -319,5 +319,5 @@ chrome.storage.sync.get(["moodleGPT"]).then(function (storage) {
   }
 
   handleModeChange();
-  checkAndFillApiKey(config.apiKey);
+  checkAndFillApiKey(config?.apiKey);
 });
