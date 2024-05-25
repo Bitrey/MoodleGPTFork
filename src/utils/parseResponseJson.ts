@@ -1,4 +1,5 @@
 import GPTAnswer, { ParsedGPTAnswer } from "../types/gptAnswer";
+import QuestionType from "../types/questionType";
 import Logs from "./logs";
 
 /**
@@ -6,7 +7,7 @@ import Logs from "./logs";
  * @param response - The raw response
  * @returns The parsed response
  */
-function parseResponseJson(response: string): GPTAnswer {
+function parseResponseJson(response: string, type: QuestionType): GPTAnswer {
   // first, try a normal JSON parse
   let parsed: ParsedGPTAnswer | null = null;
 
@@ -15,11 +16,14 @@ function parseResponseJson(response: string): GPTAnswer {
   try {
     parsed = JSON.parse(response);
 
-    if (!Number.isInteger(parsed.guess)) {
-      throw new Error("Guess is not an integer");
+    if (
+      type === QuestionType.MULTIPLE_CHOICE &&
+      !Number.isInteger(parsed.answer)
+    ) {
+      throw new Error("Answer is not an integer");
     }
   } catch (e) {
-    Logs.warn("Failed to parse JSON response:", e);
+    Logs.warn("Failed to parse JSON response 1:", e);
   }
 
   // if that fails, maybe it's <text>```json\n{...}```<text>
@@ -29,11 +33,14 @@ function parseResponseJson(response: string): GPTAnswer {
       try {
         parsed = JSON.parse(match[1]);
 
-        if (!Number.isInteger(parsed.guess)) {
-          throw new Error("Guess is not an integer");
+        if (
+          type === QuestionType.MULTIPLE_CHOICE &&
+          !Number.isInteger(parsed.answer)
+        ) {
+          throw new Error("Answer is not an integer");
         }
       } catch (e) {
-        Logs.warn("Failed to parse JSON response:", e);
+        Logs.warn("Failed to parse JSON response 2:", e);
       }
     }
   }
@@ -45,11 +52,14 @@ function parseResponseJson(response: string): GPTAnswer {
       try {
         parsed = JSON.parse(match[1]);
 
-        if (!Number.isInteger(parsed.guess)) {
-          throw new Error("Guess is not an integer");
+        if (
+          type === QuestionType.MULTIPLE_CHOICE &&
+          !Number.isInteger(parsed.answer)
+        ) {
+          throw new Error("Answer is not an integer");
         }
       } catch (e) {
-        Logs.warn("Failed to parse JSON response:", e);
+        Logs.warn("Failed to parse JSON response 3:", e);
       }
     }
   }
@@ -61,11 +71,14 @@ function parseResponseJson(response: string): GPTAnswer {
       try {
         parsed = JSON.parse(match[1]);
 
-        if (!Number.isInteger(parsed.guess)) {
-          throw new Error("Guess is not an integer");
+        if (
+          type === QuestionType.MULTIPLE_CHOICE &&
+          !Number.isInteger(parsed.answer)
+        ) {
+          throw new Error("Answer is not an integer");
         }
       } catch (e) {
-        Logs.warn("Failed to parse JSON response:", e);
+        Logs.warn("Failed to parse JSON response 4:", e);
       }
     }
   }
@@ -77,22 +90,34 @@ function parseResponseJson(response: string): GPTAnswer {
       try {
         parsed = JSON.parse(m);
 
-        if (Number.isInteger(parsed.guess)) {
+        if (
+          type === QuestionType.MULTIPLE_CHOICE &&
+          Number.isInteger(parsed.answer)
+        ) {
           break;
         }
       } catch (e) {
-        Logs.warn("Failed to parse JSON response:", e);
+        Logs.warn("Failed to parse JSON response 5:", e);
       }
     }
   }
 
-  // if that fails, find "guess" and parse from { to }
+  // if that fails, find "answer" and parse from { to }
   if (!parsed) {
-    const match = response.match(/"guess":\s*(\d+)/);
+    const match = response.match(/"answer":\s*(\d+)/);
     if (match) {
       const num = match[0].split(":")[1].trim();
-      const guess = parseInt(num, 10);
-      parsed = { guess };
+      const answer = parseInt(num, 10);
+      parsed = { answer };
+    }
+  }
+
+  // if that fails, find "answer": "<string>" (instead of "answer": <number>)
+  if (!parsed) {
+    const match = response.match(/"answer":\s*"(.*?)"/);
+    if (match) {
+      const answer = match[1];
+      parsed = { answer };
     }
   }
 
@@ -105,7 +130,7 @@ function parseResponseJson(response: string): GPTAnswer {
   return {
     rawResponse: response,
     parsed,
-    error: parsed ? null : "Failed to parse JSON response",
+    error: parsed ? null : "Failed to parse JSON response [final]",
   };
 }
 

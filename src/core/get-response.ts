@@ -1,7 +1,14 @@
 import Config, { subject } from "../types/config";
 import GPTAnswer from "../types/gptAnswer";
+import QuestionType from "../types/questionType";
+import Logs from "../utils/logs";
 import parseResponseJson from "../utils/parseResponseJson";
-import { getSafeSystemPrompt, getSystemPrompt } from "../utils/prompt";
+import {
+  getMultipleChoicePrompt,
+  getOpenResponsePrompt,
+  getSafeMultipleChoicePrompt,
+  getSafeOpenResponsePrompt,
+} from "../utils/prompt";
 
 /**
  * Get the response from chatGPT api
@@ -12,9 +19,12 @@ import { getSafeSystemPrompt, getSystemPrompt } from "../utils/prompt";
  */
 async function getChatGPTResponse(
   config: Config,
+  type: QuestionType,
   userPrompt: string,
   smart: boolean,
 ): Promise<GPTAnswer> {
+  Logs.info("Getting response with type", type);
+
   const controller = new AbortController();
   // DEBUG: timeout now at 150s
   const timeoutControler = setTimeout(() => controller.abort(), 150000);
@@ -30,7 +40,14 @@ async function getChatGPTResponse(
       messages: [
         {
           role: "system",
-          content: smart ? getSafeSystemPrompt(subject) : getSystemPrompt(),
+          content:
+            type === QuestionType.MULTIPLE_CHOICE
+              ? smart
+                ? getSafeMultipleChoicePrompt(subject)
+                : getMultipleChoicePrompt()
+              : smart
+              ? getSafeOpenResponsePrompt(subject)
+              : getOpenResponsePrompt(),
         },
         { role: "user", content: userPrompt },
       ],
@@ -43,7 +60,7 @@ async function getChatGPTResponse(
   clearTimeout(timeoutControler);
   const rep = await req.json();
   const response = rep.choices[0].message.content;
-  return parseResponseJson(response);
+  return parseResponseJson(response, type);
 }
 
 export default getChatGPTResponse;

@@ -2,7 +2,7 @@ const saveBtn = document.querySelector(".save");
 const message = document.querySelector("#message");
 
 const fastModelPreference = "gpt-3.5-turbo";
-const smartModelPreference = "gpt-4-turbo";
+const smartModelPreference = "gpt-4o";
 
 /* inputs id */
 const inputsText = ["apiKey", "code", "codeSmart"];

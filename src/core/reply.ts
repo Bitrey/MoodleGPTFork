@@ -2,7 +2,7 @@ import Config from "../types/config";
 import ReplyFn from "../types/replyFn";
 import Logs from "../utils/logs";
 import getChatGPTResponse from "./get-response";
-import createQuestion from "./create-question";
+import { createClosedQuestion, createOpenQuestion } from "./create-question";
 import handleRadioAndCheckbox from "./questions/radio-checkbox";
 // import handleSelect from "./questions/select";
 // import handleTextbox from "./questions/textbox";
@@ -10,8 +10,14 @@ import handleClipboard from "./questions/clipboard";
 // import handleNumber from "./questions/number";
 // import handleContentEditable from "./questions/contenteditable";
 import { removeListener } from "./code-listener";
-import getPrompt from "../utils/prompt";
 import GPTAnswer from "../types/gptAnswer";
+import handleTextbox from "./questions/textbox";
+import QuestionType from "../types/questionType";
+import GPTClosedQuestion, {
+  isClosedQuestion,
+} from "../types/gptClosedQuestion";
+import GPTOpenQuestion from "../types/gptOpenQuestion";
+import { getClosedPrompt, getOpenPrompt } from "../utils/prompt";
 
 /**
  * Reply to the question
@@ -30,8 +36,20 @@ const reply: ReplyFn = async function (
 ) {
   if (config.cursor) questionElem.style.cursor = "wait";
 
-  const question = createQuestion(config, questionElem, form);
   const inputList: NodeListOf<HTMLElement> = form.querySelectorAll(query);
+  const input = inputList[0] as HTMLInputElement | HTMLTextAreaElement;
+
+  // type depends if input is a radio or checkbox (closed question) or text (open question)
+  const type =
+    input.type === "radio" || input.type === "checkbox"
+      ? QuestionType.MULTIPLE_CHOICE
+      : QuestionType.OPEN_ENDED;
+
+  const question =
+    type === QuestionType.MULTIPLE_CHOICE
+      ? createClosedQuestion(config, questionElem, form)
+      : createOpenQuestion(config, questionElem);
+
   const answer: HTMLElement = form.querySelector(".answer");
 
   if (config.logs) {
@@ -40,11 +58,13 @@ const reply: ReplyFn = async function (
 
   let gptAnswer: GPTAnswer;
   try {
-    const prompt = getPrompt(question);
+    const prompt = isClosedQuestion
+      ? getClosedPrompt(question as GPTClosedQuestion)
+      : getOpenPrompt(question as GPTOpenQuestion);
     if (config.logs) {
       Logs.info("Prompt:", prompt);
     }
-    gptAnswer = await getChatGPTResponse(config, prompt, smart);
+    gptAnswer = await getChatGPTResponse(config, type, prompt, smart);
   } catch (err) {
     Logs.error("Error while getting response from ChatGPT API:", err);
     return null;
@@ -97,7 +117,7 @@ const reply: ReplyFn = async function (
 
   const handlers = [
     // handleContentEditable,
-    // handleTextbox,
+    handleTextbox,
     // handleNumber,
     // handleSelect,
     handleRadioAndCheckbox,
@@ -106,6 +126,8 @@ const reply: ReplyFn = async function (
   for (const handler of handlers) {
     if (handler(config, answer, inputList, gptAnswer)) return null;
   }
+
+  Logs.info("No handler found for the question", gptAnswer);
 
   /* In the case we can't auto complete the question */
   handleClipboard(config, gptAnswer);

@@ -81,6 +81,9 @@ function setUpMoodleGpt(config: Config, replyFn: ReplyFn, smart: boolean) {
     );
     Logs.info("Injection function:", injectionFunction);
     Logs.info("Smart:", smart);
+    Logs.info("Question element:", questionElem);
+    Logs.info("Form element:", form);
+    Logs.info("Query:", query);
     listeners.push({ element: questionElem, fn: injectionFunction });
     questionElem.addEventListener("click", injectionFunction);
 

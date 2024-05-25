@@ -10,7 +10,7 @@ import titleIndications from "../../utils/title-indications";
 function handleClipboard(config: Config, gptAnswer: GPTAnswer) {
   if (config.title) titleIndications("Copied to clipboard");
   // TODO change to make it work with not-choose-one questions
-  navigator.clipboard.writeText(gptAnswer.parsed.guess.toString());
+  navigator.clipboard.writeText(gptAnswer.parsed.answer.toString());
 }
 
 export default handleClipboard;

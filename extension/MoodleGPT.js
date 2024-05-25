@@ -3,11 +3,22 @@
   factory();
 })((function () { 'use strict';
 
+  const isClosedQuestion = (question) => {
+      return (typeof question === "object" &&
+          typeof question.question === "string" &&
+          Array.isArray(question.responses) &&
+          question.responses.every((r) => typeof r === "string"));
+  };
+
   class Logs {
       static question(question) {
           const cssQ = "color: cyan";
           const cssR = "color: blue";
-          console.log("%c[QUESTION]: %s\n%c[RESPONSES]: %s", cssQ, JSON.stringify(question.question), cssR, question.responses.map((r, i) => `${i}: ${JSON.stringify(r)}`).join("\n"));
+          console.log("%c[QUESTION]: %s\n%c[RESPONSES]: %s", cssQ, JSON.stringify(question.question), cssR, isClosedQuestion(question)
+              ? question.responses
+                  .map((r, i) => `${i}: ${JSON.stringify(r)}`)
+                  .join("\n")
+              : "Open question");
       }
       static responseTry(text, valide) {
           const css = "color: " + (valide ? "green" : "red");
@@ -110,6 +121,9 @@
           const injectionFunction = replyFn.bind(null, config, questionElem, form, query, smart);
           Logs.info("Injection function:", injectionFunction);
           Logs.info("Smart:", smart);
+          Logs.info("Question element:", questionElem);
+          Logs.info("Form element:", form);
+          Logs.info("Query:", query);
           listeners.push({ element: questionElem, fn: injectionFunction });
           questionElem.addEventListener("click", injectionFunction);
           if (config.logs) {
@@ -169,23 +183,31 @@
 
   const subject = "Numerical Analysis";
 
+  var QuestionType;
+  (function (QuestionType) {
+      QuestionType["MULTIPLE_CHOICE"] = "MULTIPLE_CHOICE";
+      QuestionType["OPEN_ENDED"] = "OPEN_ENDED";
+  })(QuestionType || (QuestionType = {}));
+  var QuestionType$1 = QuestionType;
+
   /**
    * Parse ChatGPT raw response
    * @param response - The raw response
    * @returns The parsed response
    */
-  function parseResponseJson(response) {
+  function parseResponseJson(response, type) {
       // first, try a normal JSON parse
       let parsed = null;
       response = response.trim();
       try {
           parsed = JSON.parse(response);
-          if (!Number.isInteger(parsed.guess)) {
-              throw new Error("Guess is not an integer");
+          if (type === QuestionType$1.MULTIPLE_CHOICE &&
+              !Number.isInteger(parsed.answer)) {
+              throw new Error("Answer is not an integer");
           }
       }
       catch (e) {
-          Logs.warn("Failed to parse JSON response:", e);
+          Logs.warn("Failed to parse JSON response 1:", e);
       }
       // if that fails, maybe it's <text>```json\n{...}```<text>
       if (!parsed) {
@@ -193,12 +215,13 @@
           if (match) {
               try {
                   parsed = JSON.parse(match[1]);
-                  if (!Number.isInteger(parsed.guess)) {
-                      throw new Error("Guess is not an integer");
+                  if (type === QuestionType$1.MULTIPLE_CHOICE &&
+                      !Number.isInteger(parsed.answer)) {
+                      throw new Error("Answer is not an integer");
                   }
               }
               catch (e) {
-                  Logs.warn("Failed to parse JSON response:", e);
+                  Logs.warn("Failed to parse JSON response 2:", e);
               }
           }
       }
@@ -208,12 +231,13 @@
           if (match) {
               try {
                   parsed = JSON.parse(match[1]);
-                  if (!Number.isInteger(parsed.guess)) {
-                      throw new Error("Guess is not an integer");
+                  if (type === QuestionType$1.MULTIPLE_CHOICE &&
+                      !Number.isInteger(parsed.answer)) {
+                      throw new Error("Answer is not an integer");
                   }
               }
               catch (e) {
-                  Logs.warn("Failed to parse JSON response:", e);
+                  Logs.warn("Failed to parse JSON response 3:", e);
               }
           }
       }
@@ -223,12 +247,13 @@
           if (match) {
               try {
                   parsed = JSON.parse(match[1]);
-                  if (!Number.isInteger(parsed.guess)) {
-                      throw new Error("Guess is not an integer");
+                  if (type === QuestionType$1.MULTIPLE_CHOICE &&
+                      !Number.isInteger(parsed.answer)) {
+                      throw new Error("Answer is not an integer");
                   }
               }
               catch (e) {
-                  Logs.warn("Failed to parse JSON response:", e);
+                  Logs.warn("Failed to parse JSON response 4:", e);
               }
           }
       }
@@ -238,22 +263,31 @@
           for (const m of match) {
               try {
                   parsed = JSON.parse(m);
-                  if (Number.isInteger(parsed.guess)) {
+                  if (type === QuestionType$1.MULTIPLE_CHOICE &&
+                      Number.isInteger(parsed.answer)) {
                       break;
                   }
               }
               catch (e) {
-                  Logs.warn("Failed to parse JSON response:", e);
+                  Logs.warn("Failed to parse JSON response 5:", e);
               }
           }
       }
-      // if that fails, find "guess" and parse from { to }
+      // if that fails, find "answer" and parse from { to }
       if (!parsed) {
-          const match = response.match(/"guess":\s*(\d+)/);
+          const match = response.match(/"answer":\s*(\d+)/);
           if (match) {
               const num = match[0].split(":")[1].trim();
-              const guess = parseInt(num, 10);
-              parsed = { guess };
+              const answer = parseInt(num, 10);
+              parsed = { answer };
+          }
+      }
+      // if that fails, find "answer": "<string>" (instead of "answer": <number>)
+      if (!parsed) {
+          const match = response.match(/"answer":\s*"(.*?)"/);
+          if (match) {
+              const answer = match[1];
+              parsed = { answer };
           }
       }
       if (!parsed) {
@@ -265,44 +299,79 @@
       return {
           rawResponse: response,
           parsed,
-          error: parsed ? null : "Failed to parse JSON response",
+          error: parsed ? null : "Failed to parse JSON response [final]",
       };
   }
 
   /**
-   * Get system prompt
-   * @returns {string} The system prompt
+   * Get multiple choice prompt
+   * @returns {string} The prompt
    */
-  function getSystemPrompt() {
+  function getMultipleChoicePrompt() {
+      Logs.info("Multiple choice prompt");
       return `
   This is a prompt for an artificial intelligence that tries to guess the correct answer to a multiple-choice question, given as input by the user in JSON format.
   Input: a question and numbered responses, formatted in JSON as {"question": "<string>", "responses": ["<string>", ...]}, with math formulas in MathJax format.
-  Output: the answer that the AI thinks is correct, in JSON format as follows: { "guess": <number> }, with <number> index of the responses array. The output must not contain any additional text.
+  Output: the answer that the AI thinks is correct, in JSON format as follows: { "answer": <number> }, with <number> index of the responses array. The output must not contain any additional text.
       `.trim();
   }
   /**
-   * Get safe system prompt
-   * @returns {string} The system prompt
+   * Get safe multiple choice prompt
+   * @returns {string} The prompt
    */
-  function getSafeSystemPrompt(subject) {
+  function getSafeMultipleChoicePrompt(subject) {
+      Logs.info("Safe multiple choice prompt");
       return `
   You are a teacher of ${subject}. You are preparing a multiple-choice test for your students,
   and you are writing the questions and the answers in a Moodle quiz.
   Your task is to write an explanation for each question, so that the students can understand why the correct answer is correct.
-  At the end of the explanation, you must write the correct answer, in JSON format as follows: { "guess": <number> }, with <number> index of the responses array.
+  At the end of the explanation, you must write the correct answer, in JSON format as follows: { "answer": <number> }, with <number> index of the responses array.
   The user will now input a question and numbered responses, formatted in JSON as {"question": "<string>", "responses": ["<string>", ...]}, with math formulas in MathJax format.
       `.trim();
   }
   /**
-   * Get ChatGPT prompt
+   * Get open ended prompt
+   * @returns {string} The prompt
+   */
+  function getOpenResponsePrompt() {
+      Logs.info("Open response prompt");
+      return `
+  This is a prompt for an artificial intelligence that tries to guess the correct answer to an open-ended question, given as input by the user in JSON format.
+  Input: the question, formatted in JSON as {"question": "<string>"}, with math formulas in MathJax format.
+  Output: the answer that the AI thinks is correct, in JSON format as follows: { "answer": "<string or number>" }, with "<string or number>" being the answer. The output must not contain any additional text.
+      `.trim();
+  }
+  /**
+   * Get safe open ended prompt
+   * @returns {string} The prompt
+   */
+  function getSafeOpenResponsePrompt(subject) {
+      Logs.info("Safe open response prompt");
+      return `
+  You are a teacher of ${subject}. You are preparing an open-ended test for your students, and you are writing the questions and the answers in a Moodle quiz.
+  Your task is to write an explanation for each question, so that the students can understand why the correct answer is correct.
+  At the end of the explanation, you must write the correct answer, in JSON format as follows: { "answer": "<string or number>" }, with "<string or number>" being the answer.
+  The user will now input the question, formatted in JSON as {"question": "<string>"}, with math formulas in MathJax format.
+      `.trim();
+  }
+  /**
+   * Get closed ChatGPT prompt
    * @param question - The question
    * @param responses - Array of responses
    * @returns {string} The ChatGPT prompt
    */
-  function getPrompt(gptQuestion) {
+  function getClosedPrompt(gptQuestion) {
       return JSON.stringify({
           question: gptQuestion.question,
           responses: gptQuestion.responses,
+      }, null, 4).replace(/\\\\/g, "\\");
+  }
+  /**
+   * Get open ChatGPT prompt
+   */
+  function getOpenPrompt(gptQuestion) {
+      return JSON.stringify({
+          question: gptQuestion.question,
       }, null, 4).replace(/\\\\/g, "\\");
   }
 
@@ -313,8 +382,9 @@
    * @param smart
    * @returns
    */
-  function getChatGPTResponse(config, userPrompt, smart) {
+  function getChatGPTResponse(config, type, userPrompt, smart) {
       return __awaiter(this, void 0, void 0, function* () {
+          Logs.info("Getting response with type", type);
           const controller = new AbortController();
           // DEBUG: timeout now at 150s
           const timeoutControler = setTimeout(() => controller.abort(), 150000);
@@ -330,7 +400,13 @@
                   messages: [
                       {
                           role: "system",
-                          content: smart ? getSafeSystemPrompt(subject) : getSystemPrompt(),
+                          content: type === QuestionType$1.MULTIPLE_CHOICE
+                              ? smart
+                                  ? getSafeMultipleChoicePrompt(subject)
+                                  : getMultipleChoicePrompt()
+                              : smart
+                                  ? getSafeOpenResponsePrompt(subject)
+                                  : getOpenResponsePrompt(),
                       },
                       { role: "user", content: userPrompt },
                   ],
@@ -343,7 +419,7 @@
           clearTimeout(timeoutControler);
           const rep = yield req.json();
           const response = rep.choices[0].message.content;
-          return parseResponseJson(response);
+          return parseResponseJson(response, type);
       });
   }
 
@@ -428,12 +504,9 @@
 
   /**
    * Normalize the question and add sub informations
-   * @param langage
-   * @param question
-   * @param answers
    * @returns
    */
-  function createQuestion(config, _questionContainer, formContainer) {
+  function createClosedQuestion(config, _questionContainer, formContainer) {
       if (config.logs) {
           Logs.info("Question container:", _questionContainer);
           Logs.info("Answers container:", formContainer);
@@ -463,6 +536,27 @@
           responses: Array.from(answerElements).map((e) => normalizeText(e.innerText)),
       };
   }
+  /**
+   * Normalize the question and add sub informations
+   * @returns
+   */
+  function createOpenQuestion(config, _questionContainer) {
+      if (config.logs) {
+          Logs.info("Question container:", _questionContainer);
+      }
+      const questionContainer = clearMathJax(_questionContainer);
+      let question = questionContainer.innerText;
+      if (config.logs)
+          Logs.info("Question:", question);
+      /* We remove unnecessary information */
+      const accesshideElements = questionContainer.querySelectorAll(".accesshide");
+      for (const useless of accesshideElements) {
+          question = question.replace(useless.innerText, "");
+      }
+      return {
+          question: normalizeText(question),
+      };
+  }
 
   /**
    * Handle checkbox and input elements
@@ -472,35 +566,22 @@
    * @param gptAnswer
    */
   function handleRadioAndCheckbox(config, answersElem, inputList, gptAnswer) {
-      // const input: HTMLInputElement = inputList?.[0];
-      // if (!input || (input.type !== "checkbox" && input.type !== "radio"))
-      //   return false;
-      // for (const input of inputList as NodeListOf<HTMLInputElement>) {
-      //   if (config.logs) {
-      //     Logs.info(
-      //       `Trying to check input with value ${input.value} and name ${input.name}`,
-      //     );
-      //   }
-      //   const content = normalizeText(input.parentNode.textContent);
-      //   const valide = gptAnswer.normalizedResponse.includes(content);
-      //   if (config.logs) Logs.responseTry(content, valide);
-      //   if (valide) {
-      //     if (config.mouseover) {
-      //       input.addEventListener("mouseover", () => (input.checked = true), {
-      //         once: true,
-      //       });
-      //     } else {
-      //       input.checked = true;
-      //     }
-      //   }
-      // }
-      if (typeof gptAnswer.parsed.guess !== "number")
+      let { answer } = gptAnswer.parsed;
+      const input = inputList[0];
+      // check if radio or checkbox
+      if (input.type !== "radio" && input.type !== "checkbox")
           return false;
-      // select radio inputs, check if value === gptAnswer.guess
+      if (typeof answer === "string" && !isNaN(Number(answer))) {
+          answer = Number(answer);
+      }
+      if (typeof answer !== "number")
+          return false;
+      Logs.info("[Radio Handler] Handler radio and checkbox", gptAnswer, answer);
+      // select radio inputs, check if value === gptAnswer.answer
       answersElem
           .querySelectorAll("input[type=radio]")
           .forEach((input) => {
-          if (input.value.toString() === gptAnswer.parsed.guess.toString()) {
+          if (input.value.toString() === answer.toString()) {
               input.checked = true;
           }
       });
@@ -516,7 +597,41 @@
       if (config.title)
           titleIndications("Copied to clipboard");
       // TODO change to make it work with not-choose-one questions
-      navigator.clipboard.writeText(gptAnswer.parsed.guess.toString());
+      navigator.clipboard.writeText(gptAnswer.parsed.answer.toString());
+  }
+
+  /**
+   * Handle textbox
+   * @param config
+   * @param answersElem
+   * @param inputList
+   * @param gptAnswer
+   * @returns
+   */
+  function handleTextbox(config, answersElem, inputList, gptAnswer) {
+      const input = inputList[0];
+      const answer = gptAnswer.parsed.answer.toString();
+      if (inputList.length !== 1 ||
+          (input.tagName !== "TEXTAREA" && input.type !== "text")) {
+          Logs.info("[Textbox Handler] Not a textbox", inputList, input.tagName, input.type);
+          return false;
+      }
+      Logs.info("[Textbox Handler] Handler textbox", gptAnswer, answer);
+      if (config.typing) {
+          let index = 0;
+          input.addEventListener("keydown", function (event) {
+              if (event.key === "Backspace")
+                  index = answer.length + 1;
+              if (index > answer.length)
+                  return;
+              event.preventDefault();
+              input.value = answer.slice(0, ++index);
+          });
+      }
+      else {
+          input.value = answer;
+      }
+      return true;
   }
 
   /**
@@ -531,19 +646,28 @@
       return __awaiter(this, void 0, void 0, function* () {
           if (config.cursor)
               questionElem.style.cursor = "wait";
-          const question = createQuestion(config, questionElem, form);
           const inputList = form.querySelectorAll(query);
+          const input = inputList[0];
+          // type depends if input is a radio or checkbox (closed question) or text (open question)
+          const type = input.type === "radio" || input.type === "checkbox"
+              ? QuestionType$1.MULTIPLE_CHOICE
+              : QuestionType$1.OPEN_ENDED;
+          const question = type === QuestionType$1.MULTIPLE_CHOICE
+              ? createClosedQuestion(config, questionElem, form)
+              : createOpenQuestion(config, questionElem);
           const answer = form.querySelector(".answer");
           if (config.logs) {
               Logs.question(question);
           }
           let gptAnswer;
           try {
-              const prompt = getPrompt(question);
+              const prompt = isClosedQuestion
+                  ? getClosedPrompt(question)
+                  : getOpenPrompt(question);
               if (config.logs) {
                   Logs.info("Prompt:", prompt);
               }
-              gptAnswer = yield getChatGPTResponse(config, prompt, smart);
+              gptAnswer = yield getChatGPTResponse(config, type, prompt, smart);
           }
           catch (err) {
               Logs.error("Error while getting response from ChatGPT API:", err);
@@ -587,7 +711,7 @@
               removeListener(questionElem);
           const handlers = [
               // handleContentEditable,
-              // handleTextbox,
+              handleTextbox,
               // handleNumber,
               // handleSelect,
               handleRadioAndCheckbox,
@@ -596,6 +720,7 @@
               if (handler(config, answer, inputList, gptAnswer))
                   return null;
           }
+          Logs.info("No handler found for the question", gptAnswer);
           /* In the case we can't auto complete the question */
           handleClipboard(config, gptAnswer);
       });

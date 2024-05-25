@@ -1,5 +1,5 @@
 export type ParsedGPTAnswer = {
-  guess: number;
+  answer: number | string;
 };
 
 type GPTAnswer = {

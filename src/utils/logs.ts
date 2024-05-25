@@ -1,7 +1,10 @@
 import GPTAnswer from "../types/gptAnswer";
-import GPTQuestion from "../types/gptQuestion";
+import GPTClosedQuestion, {
+  isClosedQuestion,
+} from "../types/gptClosedQuestion";
+import GPTOpenQuestion from "../types/gptOpenQuestion";
 class Logs {
-  static question(question: GPTQuestion) {
+  static question(question: GPTClosedQuestion | GPTOpenQuestion) {
     const cssQ = "color: cyan";
     const cssR = "color: blue";
     console.log(
@@ -9,7 +12,11 @@ class Logs {
       cssQ,
       JSON.stringify(question.question),
       cssR,
-      question.responses.map((r, i) => `${i}: ${JSON.stringify(r)}`).join("\n"),
+      isClosedQuestion(question)
+        ? question.responses
+            .map((r, i) => `${i}: ${JSON.stringify(r)}`)
+            .join("\n")
+        : "Open question",
     );
   }
 

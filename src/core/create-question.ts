@@ -3,20 +3,18 @@ import normalizeText from "../utils/normalize-text";
 import htmlTableToString from "../utils/html-table-to-string";
 import Logs from "../utils/logs";
 import clearMathJax from "../utils/clearMathJax";
-import GPTQuestion from "../types/gptQuestion";
+import GPTClosedQuestion from "../types/gptClosedQuestion";
+import GPTOpenQuestion from "../types/gptOpenQuestion";
 
 /**
  * Normalize the question and add sub informations
- * @param langage
- * @param question
- * @param answers
  * @returns
  */
-function createQuestion(
+export function createClosedQuestion(
   config: Config,
   _questionContainer: HTMLElement,
   formContainer: HTMLElement,
-): GPTQuestion {
+): GPTClosedQuestion {
   if (config.logs) {
     Logs.info("Question container:", _questionContainer);
     Logs.info("Answers container:", formContainer);
@@ -61,4 +59,32 @@ function createQuestion(
   };
 }
 
-export default createQuestion;
+/**
+ * Normalize the question and add sub informations
+ * @returns
+ */
+export function createOpenQuestion(
+  config: Config,
+  _questionContainer: HTMLElement,
+): GPTOpenQuestion {
+  if (config.logs) {
+    Logs.info("Question container:", _questionContainer);
+  }
+
+  const questionContainer = clearMathJax(_questionContainer);
+
+  let question = questionContainer.innerText;
+
+  if (config.logs) Logs.info("Question:", question);
+
+  /* We remove unnecessary information */
+  const accesshideElements: NodeListOf<HTMLElement> =
+    questionContainer.querySelectorAll(".accesshide");
+  for (const useless of accesshideElements) {
+    question = question.replace(useless.innerText, "");
+  }
+
+  return {
+    question: normalizeText(question),
+  };
+}

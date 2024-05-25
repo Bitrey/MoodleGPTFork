@@ -1,4 +1,5 @@
 import Config from "./config";
+import QuestionType from "./questionType";
 
 type ReplyFn = (
   config: Config,

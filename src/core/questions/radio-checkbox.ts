@@ -16,38 +16,25 @@ function handleRadioAndCheckbox(
   inputList: NodeListOf<HTMLElement>,
   gptAnswer: GPTAnswer,
 ): boolean {
-  // const input: HTMLInputElement = inputList?.[0];
+  let { answer } = gptAnswer.parsed;
 
-  // if (!input || (input.type !== "checkbox" && input.type !== "radio"))
-  //   return false;
+  const input = inputList[0] as HTMLInputElement | HTMLTextAreaElement;
 
-  // for (const input of inputList as NodeListOf<HTMLInputElement>) {
-  //   if (config.logs) {
-  //     Logs.info(
-  //       `Trying to check input with value ${input.value} and name ${input.name}`,
-  //     );
-  //   }
+  // check if radio or checkbox
+  if (input.type !== "radio" && input.type !== "checkbox") return false;
 
-  //   const content = normalizeText(input.parentNode.textContent);
-  //   const valide = gptAnswer.normalizedResponse.includes(content);
-  //   if (config.logs) Logs.responseTry(content, valide);
-  //   if (valide) {
-  //     if (config.mouseover) {
-  //       input.addEventListener("mouseover", () => (input.checked = true), {
-  //         once: true,
-  //       });
-  //     } else {
-  //       input.checked = true;
-  //     }
-  //   }
-  // }
-  if (typeof gptAnswer.parsed.guess !== "number") return false;
+  if (typeof answer === "string" && !isNaN(Number(answer))) {
+    answer = Number(answer);
+  }
+  if (typeof answer !== "number") return false;
 
-  // select radio inputs, check if value === gptAnswer.guess
+  Logs.info("[Radio Handler] Handler radio and checkbox", gptAnswer, answer);
+
+  // select radio inputs, check if value === gptAnswer.answer
   answersElem
     .querySelectorAll("input[type=radio]")
     .forEach((input: HTMLInputElement) => {
-      if (input.value.toString() === gptAnswer.parsed.guess.toString()) {
+      if (input.value.toString() === answer.toString()) {
         input.checked = true;
       }
     });
