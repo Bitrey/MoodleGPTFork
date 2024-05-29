@@ -3,7 +3,7 @@
   "name": "MoodleGPTFork",
   "version": "1.0.3",
   "description": "Hidden chat-gpt for your moodle quiz",
-  "permissions": ["storage", "activeTab"],
+  "permissions": ["storage"],
   "action": {
     "default_icon": "icon.png",
     "default_popup": "./popup/index.html"
